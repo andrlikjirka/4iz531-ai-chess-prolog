@@ -91,10 +91,12 @@ pozice(h8,8,8).
 
 start_sachovnice(Sachovnice) :-
     Sachovnice = [
-        [b2,b_pesec],[c3,b_pesec],[f3,b_pesec],[g4,c_vez],
-        [c7,c_pesec],[d6,c_pesec],[g6,c_pesec],[h5,b_vez]
+        [b2,b_pesec],[c3,b_pesec],[f3,b_pesec],[g4,c_jezdec],
+        [c7,c_pesec],[d6,c_strelec],[g6,c_pesec],[h5,b_vez]
     ].
 
+start_brane_figurky(BraneFigurky) :-
+    BraneFigurky = [].
 
 vypis_sachovnice(Sachovnice) :-
     vypis_hranice,
@@ -335,7 +337,6 @@ neobsazeno_svisle(OdkudX,OdkudY,KamX,KamY,Sachovnice) :-
     findall(Poz,(member(Poz,KontrolPozice),member([Poz,_],Sachovnice)),ObsazenePozice),
     length(ObsazenePozice,0).
 
-
 neobsazeno_diagonalne(OdkudX,OdkudY,KamX,KamY,Sachovnice) :- 
     neobsazeno_diagonalne1(OdkudX,OdkudY,KamX,KamY,Sachovnice);
     neobsazeno_diagonalne2(OdkudX,OdkudY,KamX,KamY,Sachovnice).
@@ -375,29 +376,61 @@ pohyb(Odkud,Kam,Sachovnice,SachovniceNova) :-
     append(Sachovnice2,[[Kam,Figurka]],SachovniceNova),
     !.
 
+moznost_brani(Kam,Sachovnice,Barva,Figurka) :-
+    pozice(Kam,_,_),
+    member([Kam,Figurka],Sachovnice),
+    not(figurka(Figurka,Barva,_)).
+
+brani_figurka(Kam,ProtihracovaFigurka,BF,BFn,S,Sbrani) :-
+    delete(S,[Kam,ProtihracovaFigurka],Sbrani),
+    append(BF,[ProtihracovaFigurka],BFn),
+    figurka(ProtihracovaFigurka,_,Znak),
+    write('Bereš soupeřovi figurku: '),write(Znak),nl.
+
+vypis_sebranych_figurek(BF,BarvaHrac) :-
+    findall(Znak,(figurka(Figurka,Barva,Znak),Barva\==BarvaHrac,member(Figurka,BF)),SebraneFigurky),
+    write('Sebrané figurky protihráče: ['),
+    vypis_seznamu(SebraneFigurky),
+    write(']'),nl.
+
+vypis_seznamu([]).
+vypis_seznamu([H|T]) :-
+    write(H),write(' '),
+    vypis_seznamu(T).
+
 
 % herni smycka
-sachy_krok_hrac(S,Sn,BarvaHrac) :- 
+sachy_krok_hrac(S,Sn,BF,BFn,BarvaHrac) :- 
     vypis_sachovnice(S),
     vstup_tah(Odkud,Kam,S,BarvaHrac),
-    %cílová pozice obsazena? true - brani(),pohyb() | false - pohyb()
-    pohyb(Odkud,Kam,S,Sn).
+    (
+        moznost_brani(Kam,S,BarvaHrac,ProtihracovaFigurka) -> 
+            brani_figurka(Kam,ProtihracovaFigurka,BF,BFn,S,Sbrani),
+            pohyb(Odkud,Kam,Sbrani,Sn)
+            ;
+            BFn = BF,
+            pohyb(Odkud,Kam,S,Sn)
+    ).
+    
 
-sachy_krok(S,bila) :-
+sachy_krok(S,BF,bila) :-
     write('Bílý je na tahu.'),nl,
-    sachy_krok_hrac(S,Sn,bila),
-    sachy_krok(Sn,cerna).
+    vypis_sebranych_figurek(BF,bila),
+    sachy_krok_hrac(S,Sn,BF,BFn,bila),
+    sachy_krok(Sn,BFn,cerna).
 
 
-sachy_krok(S,cerna) :-
+sachy_krok(S,BF,cerna) :-
     write('Černý je na tahu.'),nl,
-    sachy_krok_hrac(S,Sn,cerna),
-    sachy_krok(Sn,bila).
+    vypis_sebranych_figurek(BF,cerna),
+    sachy_krok_hrac(S,Sn,BF,BFn,cerna),
+    sachy_krok(Sn,BFn,bila).
 
 
 sachy :- 
     start_sachovnice(S),
-    sachy_krok(S,bila).
+    start_brane_figurky(BF),
+    sachy_krok(S,BF,bila).
 
 
 % chybové hlášky
