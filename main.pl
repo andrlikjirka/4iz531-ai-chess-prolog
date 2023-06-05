@@ -91,8 +91,8 @@ pozice(h8,8,8).
 
 start_sachovnice(Sachovnice) :-
     Sachovnice = [
-        [b2,b_pesec],[c3,b_pesec],[f3,b_pesec],[g4,c_jezdec],
-        [c7,c_pesec],[d6,c_strelec],[g6,c_pesec],[h5,b_vez]
+        [b2,b_pesec],[c3,b_pesec],[f3,b_kral],[g4,c_jezdec],
+        [c7,c_pesec],[d6,c_strelec],[g6,c_kral],[h5,b_vez]
     ].
 
 start_brane_figurky(BraneFigurky) :-
@@ -182,7 +182,7 @@ vstup_tah(Odkud,Kam,Sachovnice,Barva) :-
                 (
                     kontrola_vstup_kam_figurka(Kam,Sachovnice,Barva) -> 
                     (
-                        kontrola_vstup_tah(Odkud,Kam,Sachovnice,Barva) -> !
+                        kontrola_tah(Odkud,Kam,Sachovnice,Barva) -> !
                         ;
                         chyba_kontrola_tah(_),
                         fail
@@ -206,15 +206,14 @@ vstup_tah(Odkud,Kam,Sachovnice,Barva) :-
 
 
 % kontrola tahů
-kontrola_vstup_tah(Odkud,Kam,Sachovnice,BarvaHrac) :-
+kontrola_tah(Odkud,Kam,Sachovnice,BarvaHrac) :-
     pozice(Odkud,OdkudX,OdkudY),
     pozice(Kam,KamX,KamY),
     member([Odkud,Figurka],Sachovnice),
-    kontrola_vstup_tah_(Figurka,OdkudX,OdkudY,KamX,KamY,Sachovnice).
+    kontrola_tah_(Figurka,OdkudX,OdkudY,KamX,KamY,Sachovnice).
  
- % u kontroly tahu pro krále doplnit pravidlo, že král se svým tahem nesmí dostat do šachu
- % doplnit obecný predikát zjištění, zda je král v šachu (možná zvlášť pro bílý a černý)
-kontrola_vstup_tah_(b_kral,OdkudX,OdkudY,KamX,KamY,_) :-
+
+kontrola_tah_kral_(OdkudX,OdkudY,KamX,KamY) :-  % kontrola jen souřadnic pohybu krale
     (KamX =:= OdkudX+1, KamY =:= OdkudY); % o 1 pole doprava
     (KamX =:= OdkudX+1, KamY =:= OdkudY-1); % o 1 doprava, o 1 dolů
     (KamX =:= OdkudX, KamY =:= OdkudY-1); % o 1 dolů
@@ -224,53 +223,60 @@ kontrola_vstup_tah_(b_kral,OdkudX,OdkudY,KamX,KamY,_) :-
     (KamX =:= OdkudX, KamY =:= OdkudY+1); % o 1 nahoru
     (KamX =:= OdkudX+1, KamY =:= OdkudY+1). % o 1 doprava, o 1 nahoru
 
-kontrola_vstup_tah_(c_kral,OdkudX,OdkudY,KamX,KamY,_) :- 
-    (KamX =:= OdkudX+1, KamY =:= OdkudY); % o 1 pole doprava
-    (KamX =:= OdkudX+1, KamY =:= OdkudY-1); % o 1 doprava, o 1 dolů
-    (KamX =:= OdkudX, KamY =:= OdkudY-1); % o 1 dolů
-    (KamX =:= OdkudX-1, KamY =:= OdkudY-1); % o 1 doleva, o 1 dolů
-    (KamX =:= OdkudX-1, KamY =:= OdkudY); % o 1 doleva
-    (KamX =:= OdkudX-1, KamY =:= OdkudY+1); % o 1 doleva, o 1 nahoru
-    (KamX =:= OdkudX, KamY =:= OdkudY+1); % o 1 nahoru
-    (KamX =:= OdkudX+1, KamY =:= OdkudY+1). % o 1 doprava, o 1 nahoru
+kontrola_tah_(b_kral,OdkudX,OdkudY,KamX,KamY,Sachovnice) :-
+    kontrola_tah_kral_(OdkudX,OdkudY,KamX,KamY),
+    ( % král nesmí udělat pohyb na pozici, na kterou by se mohl platným pohybem dostat opačný král
+        member([PoziceCKral,c_kral],Sachovnice),
+        pozice(PoziceCKral,CKralX,CKralY),
+        not(kontrola_tah_kral_(CKralX,CKralY,KamX,KamY))
+    ).
 
-kontrola_vstup_tah_(b_dama,OdkudX,OdkudY,KamX,KamY,Sachovnice) :- 
+kontrola_tah_(c_kral,OdkudX,OdkudY,KamX,KamY,Sachovnice) :- 
+    kontrola_tah_kral_(OdkudX,OdkudY,KamX,KamY),
+    ( % král nesmí udělat pohyb na pozici, na kterou by se mohl platným pohybem dostat opačný král
+        member([PoziceBKral,b_kral],Sachovnice),
+        pozice(PoziceBKral,BKralX,BKralY),
+        not(kontrola_tah_kral_(BKralX,BKralY,KamX,KamY))
+    ).
+
+
+kontrola_tah_(b_dama,OdkudX,OdkudY,KamX,KamY,Sachovnice) :- 
     (KamX =:= OdkudX, KamY =\= OdkudY, neobsazeno_svisle(OdkudX,OdkudY,KamX,KamY,Sachovnice)); % svisle o libovolný počet polí, 
     (KamX =\= OdkudX, KamY =:= OdkudY, neobsazeno_vodorovne(OdkudX,OdkudY,KamX,KamY,Sachovnice)); % vodorovně o libovolný počet polí
     (abs(KamX-OdkudX) =:= abs(KamY-OdkudY),neobsazeno_diagonalne(OdkudX,OdkudY,KamX,KamY,Sachovnice)). % diagonálně o libovolný počet polí
      
-kontrola_vstup_tah_(c_dama,OdkudX,OdkudY,KamX,KamY,Sachovnice) :-
+kontrola_tah_(c_dama,OdkudX,OdkudY,KamX,KamY,Sachovnice) :-
     (KamX =:= OdkudX, KamY =\= OdkudY, neobsazeno_svisle(OdkudX,OdkudY,KamX,KamY,Sachovnice)); % svisle o libovolný počet polí, 
     (KamX =\= OdkudX, KamY =:= OdkudY, neobsazeno_vodorovne(OdkudX,OdkudY,KamX,KamY,Sachovnice)); % vodorovně o libovolný počet polí
     (abs(KamX-OdkudX) =:= abs(KamY-OdkudY),neobsazeno_diagonalne(OdkudX,OdkudY,KamX,KamY,Sachovnice)). % diagonálně o libovolný počet polí
 
-kontrola_vstup_tah_(b_vez,OdkudX,OdkudY,KamX,KamY,Sachovnice) :-
+kontrola_tah_(b_vez,OdkudX,OdkudY,KamX,KamY,Sachovnice) :-
     (KamX =:= OdkudX, KamY =\= OdkudY, neobsazeno_svisle(OdkudX,OdkudY,KamX,KamY,Sachovnice)); % svisle o libovolný počet polí, 
     (KamX =\= OdkudX, KamY =:= OdkudY, neobsazeno_vodorovne(OdkudX,OdkudY,KamX,KamY,Sachovnice)). % vodorovně o libovolný počet polí
 
-kontrola_vstup_tah_(c_vez,OdkudX,OdkudY,KamX,KamY,Sachovnice) :-
+kontrola_tah_(c_vez,OdkudX,OdkudY,KamX,KamY,Sachovnice) :-
     (KamX =:= OdkudX, KamY =\= OdkudY, neobsazeno_svisle(OdkudX,OdkudY,KamX,KamY,Sachovnice)); % svisle o libovolný počet polí, 
     (KamX =\= OdkudX, KamY =:= OdkudY, neobsazeno_vodorovne(OdkudX,OdkudY,KamX,KamY,Sachovnice)). % vodorovně o libovolný počet polí
 
-kontrola_vstup_tah_(b_strelec,OdkudX,OdkudY,KamX,KamY,Sachovnice) :-
+kontrola_tah_(b_strelec,OdkudX,OdkudY,KamX,KamY,Sachovnice) :-
     abs(KamX-OdkudX) =:= abs(KamY-OdkudY),
     neobsazeno_diagonalne(OdkudX,OdkudY,KamX,KamY,Sachovnice).
 
-kontrola_vstup_tah_(c_strelec,OdkudX,OdkudY,KamX,KamY,Sachovnice) :-
+kontrola_tah_(c_strelec,OdkudX,OdkudY,KamX,KamY,Sachovnice) :-
     abs(KamX-OdkudX) =:= abs(KamY-OdkudY),
     neobsazeno_diagonalne(OdkudX,OdkudY,KamX,KamY,Sachovnice).
 
-kontrola_vstup_tah_(b_jezdec,OdkudX,OdkudY,KamX,KamY,Sachovnice) :-
+kontrola_tah_(b_jezdec,OdkudX,OdkudY,KamX,KamY,Sachovnice) :-
     RozdilX is abs(OdkudX-KamX),
     RozdilY is abs(OdkudY-KamY),
     ((RozdilX=:=2,RozdilY=:=1);(RozdilX=:=1,RozdilY=:=2)).
 
-kontrola_vstup_tah_(c_jezdec,OdkudX,OdkudY,KamX,KamY,Sachovnice) :-
+kontrola_tah_(c_jezdec,OdkudX,OdkudY,KamX,KamY,Sachovnice) :-
     RozdilX is abs(OdkudX-KamX),
     RozdilY is abs(OdkudY-KamY),
     ((RozdilX=:=2,RozdilY=:=1);(RozdilX=:=1,RozdilY=:=2)).
 
-kontrola_vstup_tah_(b_pesec,OdkudX,OdkudY,KamX,KamY,Sachovnice) :-
+kontrola_tah_(b_pesec,OdkudX,OdkudY,KamX,KamY,Sachovnice) :-
     ( % výchozí pozice, pohyb dovolen o 1 nebo 2 pole dopředu, pokud cílové není obsazené (nesmí přeskakovat)
         OdkudY=:=2,
         OdkudX=:=KamX,
@@ -294,7 +300,7 @@ kontrola_vstup_tah_(b_pesec,OdkudX,OdkudY,KamX,KamY,Sachovnice) :-
         member([P,_],Sachovnice) %kontrola, zda je na cílové pozici figurka (barva figurky na cílové pozici byla již kontrolována v kontrola_vstup_kam_figurka)
     ).
 
-kontrola_vstup_tah_(c_pesec,OdkudX,OdkudY,KamX,KamY,Sachovnice) :-
+kontrola_tah_(c_pesec,OdkudX,OdkudY,KamX,KamY,Sachovnice) :-
     ( % výchozí pozice, pohyb dovolen o 1 nebo 2 pole dopředu, pokud cílové není obsazené (nesmí přeskakovat)
         OdkudY=:=7,
         OdkudX=:=KamX,
@@ -368,6 +374,35 @@ neobsazeno_diagonalne2(OdkudX,OdkudY,KamX,KamY,Sachovnice) :- % kontrola neobsaz
     length(ObsazenePozice,0),!.
 
 
+% mat
+kontrola_mat(Kral,Sachovnice) :-
+    not(member([_,Kral],Sachovnice)).
+
+% šach
+kontrola_sach(Kral,KamX,KamY,Sachovnice) :-
+    figurka(Kral,BarvaHrac,_),
+    pozice(CilPoziceKral,KamX,KamY),
+    kontrola_sach_(CilPoziceKral,Sachovnice,BarvaHrac).
+        
+kontrola_sach(Kral,Sachovnice,BarvaHrac) :-
+    member([PoziceKral,Kral],Sachovnice),
+    kontrola_sach_(PoziceKral,Sachovnice,BarvaHrac).
+
+kontrola_sach_(PoziceKral,Sachovnice,BarvaHrac) :-
+     findall(
+    	F,
+        (
+        	figurka(F,Barva,_),
+            (F\==b_kral,F\==c_kral),
+            Barva\==BarvaHrac,
+            member([P,F],Sachovnice),
+            kontrola_tah(P,PoziceKral,Sachovnice,BarvaHrac)
+        ),
+        SachujiciFigurky
+   	),
+    length(SachujiciFigurky,L),
+    L=\=0.
+
 
 pohyb(Odkud,Kam,Sachovnice,SachovniceNova) :-
     pozice(Odkud,_,_), pozice(Kam,_,_),
@@ -413,18 +448,46 @@ sachy_krok_hrac(S,Sn,BF,BFn,BarvaHrac) :-
     ).
     
 
-sachy_krok(S,BF,bila) :-
+sachy_krok(S,BF,bila) :- 
     write('Bílý je na tahu.'),nl,
     vypis_sebranych_figurek(BF,bila),
+    (   
+    kontrola_sach(b_kral,S,bila) -> 
+        write('Šach - bílý král ohrožen!'),nl
+        ;!
+    ),
     sachy_krok_hrac(S,Sn,BF,BFn,bila),
-    sachy_krok(Sn,BFn,cerna).
+    (
+    kontrola_mat(c_kral,Sn) -> 
+        write('Mat černého krále. Bílý hráč vítězí!'),nl,
+        vypis_sachovnice(Sn),
+        write('Konec hry.'),nl,
+        halt
+        ;
+        nl,
+        sachy_krok(Sn,BFn,cerna)
+    ).
 
 
 sachy_krok(S,BF,cerna) :-
     write('Černý je na tahu.'),nl,
     vypis_sebranych_figurek(BF,cerna),
+    (   
+    kontrola_sach(c_kral,S,cerna) -> 
+        write('Šach - černý král ohrožen!'),nl
+        ;!
+    ),
     sachy_krok_hrac(S,Sn,BF,BFn,cerna),
-    sachy_krok(Sn,BFn,bila).
+    (
+    kontrola_mat(b_kral,Sn) ->
+        write('Mat bílého krále. Černý hráč vítězí!'),nl,
+        vypis_sachovnice(Sn),
+        write('Konec hry.'),nl,
+        halt
+        ;
+        nl,
+        sachy_krok(Sn,BFn,bila)
+    ).
 
 
 sachy :- 
