@@ -1,20 +1,23 @@
 barva(bila).
 barva(cerna).
 
-figurka(b_kral,bila,'\u2654').
-figurka(b_dama,bila,'\u2655').
-figurka(b_vez,bila,'\u2656').
-figurka(b_jezdec,bila,'\u2658').
-figurka(b_strelec,bila,'\u2657').
-figurka(b_pesec,bila,'\u2659').
+barva_hraci(cerna,bila).
+barva_hraci(bila,cerna).
+
+figurka(b_kral,bila,'\u2654',(-900)).
+figurka(b_dama,bila,'\u2655',(-90)).
+figurka(b_vez,bila,'\u2656',(-50)).
+figurka(b_jezdec,bila,'\u2658',(-30)).
+figurka(b_strelec,bila,'\u2657',(-30)).
+figurka(b_pesec,bila,'\u2659',(-10)).
 
 
-figurka(c_kral,cerna,'\u265a').
-figurka(c_dama,cerna,'\u265b').
-figurka(c_vez,cerna,'\u265c').
-figurka(c_jezdec,cerna,'\u265e').
-figurka(c_strelec,cerna,'\u265d').
-figurka(c_pesec,cerna,'\u265f').
+figurka(c_kral,cerna,'\u265a',900).
+figurka(c_dama,cerna,'\u265b',90).
+figurka(c_vez,cerna,'\u265c',50).
+figurka(c_jezdec,cerna,'\u265e',30).
+figurka(c_strelec,cerna,'\u265d',30).
+figurka(c_pesec,cerna,'\u265f',10).
 
 
 pozice(a1,1,1).
@@ -91,8 +94,11 @@ pozice(h8,8,8).
 
 start_sachovnice(Sachovnice) :-
     Sachovnice = [
-        [b2,b_pesec],[c3,b_pesec],[f3,b_kral],[g4,c_jezdec],
-        [c7,c_pesec],[d6,c_strelec],[g6,c_kral],[h5,b_vez]
+        [a8,c_vez],[b8,c_jezdec],[c8,c_strelec],[d8,c_dama],[e8,c_kral],[f8,c_strelec],[g8,c_jezdec],[h8,c_vez],
+        [a7,c_pesec],[b7,c_pesec],[c7,c_pesec],[d7,c_pesec],[e7,c_pesec],[f7,c_pesec],[g7,c_pesec],[h7,c_pesec],
+
+        [a2,b_pesec],[b2,b_pesec],[c2,b_pesec],[d2,b_pesec],[e2,b_pesec],[f2,b_pesec],[g2,b_pesec],[h2,b_pesec],
+        [a1,b_vez],[b1,b_jezdec],[c1,b_strelec],[d1,b_dama],[e1,b_kral],[f1,b_strelec],[g1,b_jezdec],[h1,b_vez]
     ].
 
 start_brane_figurky(BraneFigurky) :-
@@ -126,7 +132,7 @@ vypis_radek_policka(Sachovnice,X,Y) :-
     X =< 8,
     pozice(P,X,Y),
     (member([P,F],Sachovnice) -> (
-        figurka(F,_,Znak),
+        figurka(F,_,Znak,_),
         write(' '),write(Znak),write('  '),write('|')
     )
     ;
@@ -158,7 +164,7 @@ kontrola_vstup_pozice(Odkud,Kam) :-
 kontrola_vstup_odkud_figurka(Odkud,Sachovnice,BarvaHrac) :- 
     pozice(Odkud,_,_),
     member([Odkud,Figurka],Sachovnice),
-    figurka(Figurka,BarvaHrac,_). % barva figurky na počáteční pozici = barva hráče
+    figurka(Figurka,BarvaHrac,_,_). % barva figurky na počáteční pozici = barva hráče
 
 kontrola_vstup_kam_figurka(Kam,Sachovnice,BarvaHrac) :-
     pozice(Kam,_,_),
@@ -166,7 +172,7 @@ kontrola_vstup_kam_figurka(Kam,Sachovnice,BarvaHrac) :-
         not(member([Kam,Figurka],Sachovnice)); % na cílové pozici není žádná figurka
         (
         member([Kam,Figurka],Sachovnice), % na cílové pozici je figurka
-        not(figurka(Figurka,BarvaHrac,_)) % ale je opačné barvy
+        not(figurka(Figurka,BarvaHrac,_,_)) % ale je opačné barvy
         )
     ).
 
@@ -392,7 +398,7 @@ kontrola_sach_(PoziceKral,Sachovnice,BarvaHrac) :-
      findall(
     	F,
         (
-        	figurka(F,Barva,_),
+        	figurka(F,Barva,_,_),
             (F\==b_kral,F\==c_kral),
             Barva\==BarvaHrac,
             member([P,F],Sachovnice),
@@ -414,16 +420,16 @@ pohyb(Odkud,Kam,Sachovnice,SachovniceNova) :-
 moznost_brani(Kam,Sachovnice,Barva,Figurka) :-
     pozice(Kam,_,_),
     member([Kam,Figurka],Sachovnice),
-    not(figurka(Figurka,Barva,_)).
+    not(figurka(Figurka,Barva,_,_)).
 
 brani_figurka(Kam,ProtihracovaFigurka,BF,BFn,S,Sbrani) :-
     delete(S,[Kam,ProtihracovaFigurka],Sbrani),
     append(BF,[ProtihracovaFigurka],BFn),
-    figurka(ProtihracovaFigurka,_,Znak),
+    figurka(ProtihracovaFigurka,_,Znak,_),
     write('Bereš soupeřovi figurku: '),write(Znak),nl.
 
 vypis_sebranych_figurek(BF,BarvaHrac) :-
-    findall(Znak,(figurka(Figurka,Barva,Znak),Barva\==BarvaHrac,member(Figurka,BF)),SebraneFigurky),
+    findall(Znak,(figurka(Figurka,Barva,Znak,_),Barva\==BarvaHrac,member(Figurka,BF)),SebraneFigurky),
     write('Sebrané figurky protihráče: ['),
     vypis_seznamu(SebraneFigurky),
     write(']'),nl.
@@ -434,10 +440,106 @@ vypis_seznamu([H|T]) :-
     vypis_seznamu(T).
 
 
-% herni smycka
+% MINIMAX
+ohodnoceni_sachovnice(Sachovnice,Hodnoceni) :-
+    ohodnoceni_sachovnice_(Sachovnice,Hodnoceni,0).
+
+ohodnoceni_sachovnice_([],Hodnoceni,Hodnoceni).
+ohodnoceni_sachovnice_([[_,Figurka]|T],Hodnoceni,HodnoceniKumul):-
+    figurka(Figurka,_,_,Hodnota),
+    HodnoceniKumulNove is HodnoceniKumul+Hodnota,
+    ohodnoceni_sachovnice_(T,Hodnoceni,HodnoceniKumulNove).
+
+
+max_ohodnoceni_sachovnice([[S,_,BF,Pozice]],S,BF,Pozice).
+
+max_ohodnoceni_sachovnice([[Sachovnice1,Hodnoceni1,BF1,Pozice1],[Sachovnice2,Hodnoceni2,BF2,Pozice2]|T],MaxSachovnice,BF,Pozice) :-
+    Hodnoceni1 = Hodnoceni2,
+    % pokud dva možné vygenerované stavy mají stejné hodnocení, vybere se náhodně 
+    random_member(X,[[Sachovnice1,Hodnoceni1,BF1,Pozice1],[Sachovnice2,Hodnoceni2,BF2,Pozice2]]),
+    max_ohodnoceni_sachovnice([X|T],MaxSachovnice,BF,Pozice).
+
+max_ohodnoceni_sachovnice([[Sachovnice1,Hodnoceni1,BF1,Pozice1],[_,Hodnoceni2,_,_]|T],MaxSachovnice,BF,Pozice) :-
+    Hodnoceni1 > Hodnoceni2,
+    max_ohodnoceni_sachovnice([[Sachovnice1,Hodnoceni1,BF1,Pozice1]|T],MaxSachovnice,BF,Pozice).
+
+max_ohodnoceni_sachovnice([[_,Hodnoceni1,_,_],[Sachovnice2,Hodnoceni2,BF2,Pozice2]|T],MaxSachovnice,BF,Pozice) :-
+    Hodnoceni1 < Hodnoceni2,
+    max_ohodnoceni_sachovnice([[Sachovnice2,Hodnoceni2,BF2,Pozice2]|T],MaxSachovnice,BF,Pozice).
+
+
+pohyb_minimax(Odkud,Kam,Sachovnice,SachovniceNova,BF,BFn,BarvaHrac) :- % pohyb s ukládáním braných figurek (potřebné jen pro první úroveň stromu)
+	(   
+    moznost_brani(Kam,Sachovnice,BarvaHrac,ProtihracovaFigurka) ->  
+      delete(Sachovnice,[Kam,ProtihracovaFigurka],Sbrani), 
+      append(BF,[ProtihracovaFigurka],BFn),
+      pohyb(Odkud,Kam,Sbrani,SachovniceNova) 
+      ;
+      BFn=BF,
+      pohyb(Odkud,Kam,Sachovnice,SachovniceNova)
+    ).
+
+pohyb_minimax(Odkud,Kam,Sachovnice,SachovniceNova,BarvaHrac) :- % pohyb bez ukádání braných figurek (pro generování tahů v dalších úrovních stromu)
+	(   
+    moznost_brani(Kam,Sachovnice,BarvaHrac,ProtihracovaFigurka) ->  
+      delete(Sachovnice,[Kam,ProtihracovaFigurka],Sbrani), 
+      pohyb(Odkud,Kam,Sbrani,SachovniceNova)
+      ;
+      pohyb(Odkud,Kam,Sachovnice,SachovniceNova)
+    ).
+
+minimax_(S,BarvaHrac,Hodnoceni,Hloubka) :-
+    barva_hraci(BarvaHrac,BarvaProtihrac),
+    
+    figurka(F,BarvaHrac,_,_),member([PoziceOdkud,F],S),
+    (
+    (pozice(PoziceKam,_,_),not(member([PoziceKam,_],S)));
+    (pozice(PoziceKam,_,_),member([PoziceKam,ProtihracF],S),figurka(ProtihracF,BarvaProtihrac,_,_))
+    ),
+    kontrola_tah(PoziceOdkud,PoziceKam,S,cerna),
+    pohyb_minimax(PoziceOdkud,PoziceKam,S,GenS,BarvaHrac), 
+    
+    minimax(GenS,BarvaProtihrac,Hodnoceni,Hloubka).
+
+minimax(Sachovnice,_,Hodnoceni,1) :- % minimax(Sachovnice,BarvaHrace,Hodnoceni,Hloubka)
+    ohodnoceni_sachovnice(Sachovnice,Hodnoceni).
+
+minimax(S,cerna,NejHodnoceni,Hloubka) :- % maximalizujici hrac (cerna) = AI
+    Hloubka>1,
+    HloubkaNova is Hloubka-1,
+    aggregate_all(max(V),minimax_(S,cerna,V,HloubkaNova),NejHodnoceni).
+
+minimax(S,bila,NejHodnoceni,Hloubka) :-
+    Hloubka>1,
+    HloubkaNova is Hloubka-1,
+    aggregate_all(min(V),minimax_(S,bila,V,HloubkaNova),NejHodnoceni).
+
+sachy_krok_minimax(S,VysledekS,BF,VysledekBF,BarvaHrac) :- 
+    vypis_sachovnice(S),
+    findall(
+        G,
+        (
+            figurka(F,cerna,_,_),member([PoziceOdkud,F],S),
+			(
+            	(pozice(PoziceKam,_,_),not(member([PoziceKam,_],S)));
+        		(pozice(PoziceKam,_,_),member([PoziceKam,ProtihracF],S),figurka(ProtihracF,bila,_,_))
+        	),
+        	kontrola_tah(PoziceOdkud,PoziceKam,S,cerna),
+          	pohyb_minimax(PoziceOdkud,PoziceKam,S,GenS,BF,BFn,BarvaHrac), 
+            minimax(GenS,bila,Hodnoceni,2),
+        	G = [GenS,Hodnoceni,BFn,[PoziceOdkud,PoziceKam]]
+        ),
+        GenerovaneS
+    ),
+    max_ohodnoceni_sachovnice(GenerovaneS,VysledekS,VysledekBF,[PoziceOdkud,PoziceKam]),
+    write('Černý hráč (AI) provedl tah: '),write(PoziceOdkud),write(','),write(PoziceKam),nl.
+
+
+% HRAC
 sachy_krok_hrac(S,Sn,BF,BFn,BarvaHrac) :- 
     vypis_sachovnice(S),
     vstup_tah(Odkud,Kam,S,BarvaHrac),
+    %oddělit následující blok do pohyb_hrac (podobně jako je pohyb_minimax)
     (
         moznost_brani(Kam,S,BarvaHrac,ProtihracovaFigurka) -> 
             brani_figurka(Kam,ProtihracovaFigurka,BF,BFn,S,Sbrani),
@@ -448,8 +550,10 @@ sachy_krok_hrac(S,Sn,BF,BFn,BarvaHrac) :-
     ).
     
 
+% HERNÍ SMYČKA
+
 sachy_krok(S,BF,bila) :- 
-    write('Bílý je na tahu.'),nl,
+    write('Bílý hráč je na tahu.'),nl,
     vypis_sebranych_figurek(BF,bila),
     (   
     kontrola_sach(b_kral,S,bila) -> 
@@ -470,14 +574,9 @@ sachy_krok(S,BF,bila) :-
 
 
 sachy_krok(S,BF,cerna) :-
-    write('Černý je na tahu.'),nl,
+    write('Černý hráč je na tahu.'),nl,
     vypis_sebranych_figurek(BF,cerna),
-    (   
-    kontrola_sach(c_kral,S,cerna) -> 
-        write('Šach - černý král ohrožen!'),nl
-        ;!
-    ),
-    sachy_krok_hrac(S,Sn,BF,BFn,cerna),
+    sachy_krok_minimax(S,Sn,BF,BFn,cerna),
     (
     kontrola_mat(b_kral,Sn) ->
         write('Mat bílého krále. Černý hráč vítězí!'),nl,
