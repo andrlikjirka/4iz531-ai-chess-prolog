@@ -22,3 +22,6 @@ sachy.
 
 Po spuštění se zobrazí šachovnice a bílý hráč (uživatel) je vyzván k zadání prvního tahu. Po provedení tahu je na řadě černý hráč, který je reprezentování umělou inteligencí. Umělá inteligence využívající algoritmus minimax s omezenou hloubkou vyhodnodí aktuální stav hry a provede svůj tah. Tento cyklus se opakuje.
 
+### Formát vstupu
+Aktivní hráč zadává tahy, které chce provést. Vstup musí splňovat následující formát `a2,a3`, resp. `A2,A3` (na velikosti písmen nezáleží).
+
