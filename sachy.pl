@@ -1,5 +1,6 @@
-:- consult(figurky).
-:- consult(pozice).
+:- use_module(barvy).
+:- use_module(figurky).
+:- use_module(pozice).
 
 :- public(sachy/0).
 
@@ -59,10 +60,11 @@ vstup(Odkud, Kam) :-
     read_line_to_string(P, X),
     (
         X = "konec" ->
-        writeln('Terminating program...'),
+        writeln('Ukončuji šachovou partii...'),
         halt 
         ;
-        split_string(X, ",\s\t\n", "\s\t\n", [X1, X2]),
+        string_lower(X,Xmale), % zadaný string se převede na malá písmena (vstup může být i velkými)
+        split_string(Xmale, ",\s\t\n", "\s\t\n", [X1, X2]),
         atom_string(Odkud, X1),
         atom_string(Kam, X2)
     ).
@@ -99,25 +101,25 @@ vstup_tah(Odkud,Kam,Sachovnice,Barva) :-
                 (
                     kontrola_vstup_kam_figurka(Kam,Sachovnice,Barva) -> 
                     (
-                        kontrola_tah(Odkud,Kam,Sachovnice,Barva) -> !
+                        kontrola_tah(Odkud,Kam,Sachovnice,Barva) -> true
                         ;
-                        chyba_kontrola_tah(_),
+                        chyba_kontrola_tah(),
                         fail
                     )
                     ;
-                    chyba_vstup_kam_figurka(_),
+                    chyba_vstup_kam_figurka(),
                     fail
                 )
                 ;
-                chyba_vstup_odkud_figurka(_),
+                chyba_vstup_odkud_figurka(),
                 fail
             )
             ;
-            chyba_vstup_pozice(_),
+            chyba_vstup_pozice(),
             fail
         )
         ;
-        chyba_vstup(_),
+        chyba_vstup(),
         fail
     ).
 
@@ -128,17 +130,13 @@ kontrola_tah(Odkud,Kam,Sachovnice,_) :-
     pozice(Kam,KamX,KamY),
     member([Odkud,Figurka],Sachovnice),
     kontrola_tah_(Figurka,OdkudX,OdkudY,KamX,KamY,Sachovnice).
- 
 
 kontrola_tah_kral_(OdkudX,OdkudY,KamX,KamY) :-  % kontrola jen souřadnic pohybu krale
-    (KamX =:= OdkudX+1, KamY =:= OdkudY); % o 1 pole doprava
-    (KamX =:= OdkudX+1, KamY =:= OdkudY-1); % o 1 doprava, o 1 dolů
-    (KamX =:= OdkudX, KamY =:= OdkudY-1); % o 1 dolů
-    (KamX =:= OdkudX-1, KamY =:= OdkudY-1); % o 1 doleva, o 1 dolů
-    (KamX =:= OdkudX-1, KamY =:= OdkudY); % o 1 doleva
-    (KamX =:= OdkudX-1, KamY =:= OdkudY+1); % o 1 doleva, o 1 nahoru
-    (KamX =:= OdkudX, KamY =:= OdkudY+1); % o 1 nahoru
-    (KamX =:= OdkudX+1, KamY =:= OdkudY+1). % o 1 doprava, o 1 nahoru
+    (OdkudX\==KamX;OdkudY\==KamY), 
+    DeltaX is abs(KamX-OdkudX), 
+    DeltaY is abs(KamY-OdkudY), 
+    DeltaX =< 1, 
+    DeltaY =< 1.
 
 kontrola_tah_(b_kral,OdkudX,OdkudY,KamX,KamY,Sachovnice) :-
     kontrola_tah_kral_(OdkudX,OdkudY,KamX,KamY),
@@ -321,19 +319,19 @@ kontrola_sach_(PoziceKral,Sachovnice,BarvaHrac) :-
     L=\=0.
 
 
-pohyb(Odkud,Kam,Sachovnice,SachovniceNova) :-
+posun_figurky(Odkud,Kam,Sachovnice,SachovniceNova) :-
     pozice(Odkud,_,_), pozice(Kam,_,_),
     member([Odkud,Figurka],Sachovnice),
     delete(Sachovnice,[Odkud,Figurka],Sachovnice2),
-    append(Sachovnice2,[[Kam,Figurka]],SachovniceNova),
-    !.
+    append(Sachovnice2,[[Kam,Figurka]],SachovniceNova).
 
-moznost_brani(Kam,Sachovnice,Barva,Figurka) :-
+obsazena_cilova_pozice_protihrac(Kam,Sachovnice,BarvaHrac,Figurka) :- %možnost braní?: Kam je pozice, na které je figurka protihráče
     pozice(Kam,_,_),
     member([Kam,Figurka],Sachovnice),
-    not(figurka(Figurka,Barva,_,_)).
+    barva_hraci(BarvaHrac,BarvaProtihrac),
+    figurka(Figurka,BarvaProtihrac,_,_).
 
-brani_figurka(Kam,ProtihracovaFigurka,BF,BFn,S,Sbrani) :-
+brani_protihracovy_figurky(Kam,ProtihracovaFigurka,BF,BFn,S,Sbrani) :-
     delete(S,[Kam,ProtihracovaFigurka],Sbrani),
     append(BF,[ProtihracovaFigurka],BFn),
     figurka(ProtihracovaFigurka,_,Znak,_),
@@ -352,6 +350,7 @@ vypis_seznamu([H|T]) :-
 
 
 % MINIMAX
+% predikát ohodnoceni_sachovnice slouží pro ohodnocení konečných stavů (po dosažení dané hloubky)
 ohodnoceni_sachovnice(Sachovnice,Hodnoceni) :-
     ohodnoceni_sachovnice_(Sachovnice,Hodnoceni,0).
 
@@ -361,45 +360,45 @@ ohodnoceni_sachovnice_([[_,Figurka]|T],Hodnoceni,HodnoceniKumul):-
     HodnoceniKumulNove is HodnoceniKumul+Hodnota,
     ohodnoceni_sachovnice_(T,Hodnoceni,HodnoceniKumulNove).
 
+% predikáty slouží pro výběr nejlépe ohodnocené šachovnice (stavu hry), které minimax vygeneroval jako možné a přiřadil k nim ohodnocení
+vyber_nejlepsi_tah([[S,_,BF,Pozice]],S,BF,Pozice).
 
-max_ohodnoceni_sachovnice([[S,_,BF,Pozice]],S,BF,Pozice).
-
-max_ohodnoceni_sachovnice([[Sachovnice1,Hodnoceni1,BF1,Pozice1],[Sachovnice2,Hodnoceni2,BF2,Pozice2]|T],MaxSachovnice,BF,Pozice) :-
+vyber_nejlepsi_tah([[Sachovnice1,Hodnoceni1,BF1,Pozice1],[Sachovnice2,Hodnoceni2,BF2,Pozice2]|T],MaxSachovnice,BF,Pozice) :-
     Hodnoceni1 = Hodnoceni2,
     % pokud dva možné vygenerované stavy mají stejné hodnocení, vybere se náhodně 
     random_member(X,[[Sachovnice1,Hodnoceni1,BF1,Pozice1],[Sachovnice2,Hodnoceni2,BF2,Pozice2]]),
-    max_ohodnoceni_sachovnice([X|T],MaxSachovnice,BF,Pozice).
+    vyber_nejlepsi_tah([X|T],MaxSachovnice,BF,Pozice).
 
-max_ohodnoceni_sachovnice([[Sachovnice1,Hodnoceni1,BF1,Pozice1],[_,Hodnoceni2,_,_]|T],MaxSachovnice,BF,Pozice) :-
+vyber_nejlepsi_tah([[Sachovnice1,Hodnoceni1,BF1,Pozice1],[_,Hodnoceni2,_,_]|T],MaxSachovnice,BF,Pozice) :-
     Hodnoceni1 > Hodnoceni2,
-    max_ohodnoceni_sachovnice([[Sachovnice1,Hodnoceni1,BF1,Pozice1]|T],MaxSachovnice,BF,Pozice).
+    vyber_nejlepsi_tah([[Sachovnice1,Hodnoceni1,BF1,Pozice1]|T],MaxSachovnice,BF,Pozice).
 
-max_ohodnoceni_sachovnice([[_,Hodnoceni1,_,_],[Sachovnice2,Hodnoceni2,BF2,Pozice2]|T],MaxSachovnice,BF,Pozice) :-
+vyber_nejlepsi_tah([[_,Hodnoceni1,_,_],[Sachovnice2,Hodnoceni2,BF2,Pozice2]|T],MaxSachovnice,BF,Pozice) :-
     Hodnoceni1 < Hodnoceni2,
-    max_ohodnoceni_sachovnice([[Sachovnice2,Hodnoceni2,BF2,Pozice2]|T],MaxSachovnice,BF,Pozice).
+    vyber_nejlepsi_tah([[Sachovnice2,Hodnoceni2,BF2,Pozice2]|T],MaxSachovnice,BF,Pozice).
 
 
-pohyb_minimax(Odkud,Kam,Sachovnice,SachovniceNova,BF,BFn,BarvaHrac) :- % pohyb s ukládáním braných figurek (potřebné jen pro první úroveň stromu)
+posun_figurky_minimax(Odkud,Kam,Sachovnice,SachovniceNova,BF,BFn,BarvaHrac) :- % pohyb s ukládáním braných figurek (potřebné jen pro první úroveň stromu)
 	(   
-    moznost_brani(Kam,Sachovnice,BarvaHrac,ProtihracovaFigurka) ->  
+    obsazena_cilova_pozice_protihrac(Kam,Sachovnice,BarvaHrac,ProtihracovaFigurka) ->  
       delete(Sachovnice,[Kam,ProtihracovaFigurka],Sbrani), 
       append(BF,[ProtihracovaFigurka],BFn),
-      pohyb(Odkud,Kam,Sbrani,SachovniceNova) 
+      posun_figurky(Odkud,Kam,Sbrani,SachovniceNova) 
       ;
       BFn=BF,
-      pohyb(Odkud,Kam,Sachovnice,SachovniceNova)
+      posun_figurky(Odkud,Kam,Sachovnice,SachovniceNova)
     ).
 
-pohyb_minimax(Odkud,Kam,Sachovnice,SachovniceNova,BarvaHrac) :- % pohyb bez ukádání braných figurek (pro generování tahů v dalších úrovních stromu)
+posun_figurky_minimax(Odkud,Kam,Sachovnice,SachovniceNova,BarvaHrac) :- % pohyb bez ukádání braných figurek (pro generování tahů v dalších úrovních stromu)
 	(   
-    moznost_brani(Kam,Sachovnice,BarvaHrac,ProtihracovaFigurka) ->  
+    obsazena_cilova_pozice_protihrac(Kam,Sachovnice,BarvaHrac,ProtihracovaFigurka) ->  
       delete(Sachovnice,[Kam,ProtihracovaFigurka],Sbrani), 
-      pohyb(Odkud,Kam,Sbrani,SachovniceNova)
+      posun_figurky(Odkud,Kam,Sbrani,SachovniceNova)
       ;
-      pohyb(Odkud,Kam,Sachovnice,SachovniceNova)
+      posun_figurky(Odkud,Kam,Sachovnice,SachovniceNova)
     ).
 
-minimax_(S,BarvaHrac,Hodnoceni,Hloubka) :-
+minimax_generuj_tah(S,BarvaHrac,Hodnoceni,Hloubka) :-
     barva_hraci(BarvaHrac,BarvaProtihrac),
     
     figurka(F,BarvaHrac,_,_),member([PoziceOdkud,F],S),
@@ -408,22 +407,22 @@ minimax_(S,BarvaHrac,Hodnoceni,Hloubka) :-
     (pozice(PoziceKam,_,_),member([PoziceKam,ProtihracF],S),figurka(ProtihracF,BarvaProtihrac,_,_))
     ),
     kontrola_tah(PoziceOdkud,PoziceKam,S,cerna),
-    pohyb_minimax(PoziceOdkud,PoziceKam,S,GenS,BarvaHrac), 
+    posun_figurky_minimax(PoziceOdkud,PoziceKam,S,GenS,BarvaHrac), 
     
-    minimax(GenS,BarvaProtihrac,Hodnoceni,Hloubka).
+    minimax(GenS,BarvaProtihrac,Hodnoceni,Hloubka). %pro vygenerovaný tah se opět zavolá minimax, další vrstva (hloubka), ale tentokrát s opačnou barvou
 
 minimax(Sachovnice,_,Hodnoceni,1) :- % minimax(Sachovnice,BarvaHrace,Hodnoceni,Hloubka)
     ohodnoceni_sachovnice(Sachovnice,Hodnoceni).
 
-minimax(S,cerna,NejHodnoceni,Hloubka) :- % maximalizujici hrac (cerna) = AI
+minimax(S,cerna,NejHodnoceni,Hloubka) :- % maximalizujici hrac (cerna) = AI - cerne figurky jsou kladně ohodnocené, tj. musím maximalizovat (minimax v této aplikaci vybírá tah pro černého hráče)
     Hloubka>1,
     HloubkaNova is Hloubka-1,
-    aggregate_all(max(V),minimax_(S,cerna,V,HloubkaNova),NejHodnoceni).
+    aggregate_all(max(V),minimax_generuj_tah(S,cerna,V,HloubkaNova),NejHodnoceni).
 
-minimax(S,bila,NejHodnoceni,Hloubka) :-
+minimax(S,bila,NejHodnoceni,Hloubka) :- % minimalizujici hrac (bila) = uživatel
     Hloubka>1,
     HloubkaNova is Hloubka-1,
-    aggregate_all(min(V),minimax_(S,bila,V,HloubkaNova),NejHodnoceni).
+    aggregate_all(min(V),minimax_generuj_tah(S,bila,V,HloubkaNova),NejHodnoceni).
 
 sachy_krok_minimax(S,VysledekS,BF,VysledekBF,BarvaHrac) :- 
     vypis_sachovnice(S),
@@ -435,30 +434,32 @@ sachy_krok_minimax(S,VysledekS,BF,VysledekBF,BarvaHrac) :-
             	(pozice(PoziceKam,_,_),not(member([PoziceKam,_],S)));
         		(pozice(PoziceKam,_,_),member([PoziceKam,ProtihracF],S),figurka(ProtihracF,bila,_,_))
         	),
-        	kontrola_tah(PoziceOdkud,PoziceKam,S,cerna),
-          	pohyb_minimax(PoziceOdkud,PoziceKam,S,GenS,BF,BFn,BarvaHrac), 
+            kontrola_tah(PoziceOdkud,PoziceKam,S,cerna),
+            posun_figurky_minimax(PoziceOdkud,PoziceKam,S,GenS,BF,BFn,BarvaHrac), 
             minimax(GenS,bila,Hodnoceni,2),
-        	G = [GenS,Hodnoceni,BFn,[PoziceOdkud,PoziceKam]]
+            G = [GenS,Hodnoceni,BFn,[PoziceOdkud,PoziceKam]]
         ),
         GenerovaneS
     ),
-    max_ohodnoceni_sachovnice(GenerovaneS,VysledekS,VysledekBF,[PoziceOdkud,PoziceKam]),
+    vyber_nejlepsi_tah(GenerovaneS,VysledekS,VysledekBF,[PoziceOdkud,PoziceKam]),
     write('Černý hráč (AI) provedl tah: '),write(PoziceOdkud),write(','),write(PoziceKam),nl.
 
 
 % HRAC
+pohyb_hrac(Odkud,Kam,S,Sn,BF,BFn,BarvaHrac) :-
+    (
+        obsazena_cilova_pozice_protihrac(Kam,S,BarvaHrac,ProtihracovaFigurka) -> 
+            brani_protihracovy_figurky(Kam,ProtihracovaFigurka,BF,BFn,S,Sbrani),
+            posun_figurky(Odkud,Kam,Sbrani,Sn)
+            ;
+            BFn = BF,
+            posun_figurky(Odkud,Kam,S,Sn)
+    ).
+
 sachy_krok_hrac(S,Sn,BF,BFn,BarvaHrac) :- 
     vypis_sachovnice(S),
     vstup_tah(Odkud,Kam,S,BarvaHrac),
-    %oddělit následující blok do pohyb_hrac (podobně jako je pohyb_minimax)
-    (
-        moznost_brani(Kam,S,BarvaHrac,ProtihracovaFigurka) -> 
-            brani_figurka(Kam,ProtihracovaFigurka,BF,BFn,S,Sbrani),
-            pohyb(Odkud,Kam,Sbrani,Sn)
-            ;
-            BFn = BF,
-            pohyb(Odkud,Kam,S,Sn)
-    ).
+    pohyb_hrac(Odkud,Kam,S,Sn,BF,BFn,BarvaHrac).    
     
 
 % HERNÍ SMYČKA
@@ -469,7 +470,8 @@ sachy_krok(S,BF,bila) :-
     (   
     kontrola_sach(b_kral,S,bila) -> 
         write('Šach - bílý král ohrožen!'),nl
-        ;!
+        ;
+        true
     ),
     sachy_krok_hrac(S,Sn,BF,BFn,bila),
     (
@@ -507,8 +509,8 @@ sachy :-
 
 
 % chybové hlášky
-chyba_vstup(_) :- write('Neplatný vstup.'),nl.
-chyba_vstup_pozice(_) :- write('Zadána neplatná pozice na šachovnici.'),nl.
-chyba_vstup_odkud_figurka(_) :- write('Hraj laskavě se svými figurkami.'),nl.
-chyba_vstup_kam_figurka(_) :- write('Na cílové pozici se nachází figurka tvojí barvy.'),nl.
-chyba_kontrola_tah(_) :- write('Zadaný tah nesplňuje pravidla.'),nl.
+chyba_vstup() :- write('Neplatný vstup.'),nl.
+chyba_vstup_pozice() :- write('Zadána neplatná pozice na šachovnici.'),nl.
+chyba_vstup_odkud_figurka() :- write('Hraj laskavě se svými figurkami.'),nl.
+chyba_vstup_kam_figurka() :- write('Na cílové pozici se nachází figurka tvojí barvy.'),nl.
+chyba_kontrola_tah() :- write('Zadaný tah nesplňuje pravidla.'),nl.
