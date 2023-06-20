@@ -1,7 +1,7 @@
 # AI Chess - Prolog
 
 ## Popis projektu
-Tento repozitář obsahuje kód pro seminární práci z předmětu 4IZ531. Cílem seminární práce je implementovat šachový program v programovacím jazyce Prolog, který umožní hrát hru proti umělé inteligenci. Součástí programu je tedy i základní šachový engine pro vyhodnocování aktuálního stavu hry a generování tahů.
+Tento repozitář obsahuje kód pro semestrální projekt z předmětu 4IZ531. Cílem projektu je implementovat šachový program v programovacím jazyce Prolog, který umožní hrát hru proti umělé inteligenci. Součástí programu je tedy i základní šachový engine pro vyhodnocování aktuálního stavu hry a generování tahů.
 
 Šachový program využívá algoritmu minimax s omezenou hloubkou pro rozhodování o nejlepším tahu v dané pozici. Algoritmus minimax je klasickým algoritmem pro hledání optimálního tahu ve hře s nulovým součtem. Omezení hloubky algoritmu umožňuje snížit výpočetní složitost a získat rychlejší odezvu.
 
