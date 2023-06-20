@@ -1,3 +1,5 @@
+:- module(pozice,[pozice/3]).
+
 % pozice na šachovnici (označení pozice + souřadnice)
 pozice(a1,1,1).
 pozice(a2,1,2).

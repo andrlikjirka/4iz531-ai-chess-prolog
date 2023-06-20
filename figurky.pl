@@ -1,9 +1,4 @@
-% barvy figurek / hráčů
-barva(bila).
-barva(cerna).
-
-barva_hraci(cerna,bila).
-barva_hraci(bila,cerna).
+:- module(figurky,[figurka/4]).
 
 
 % figurky na šachovnici (označení, barva, znak pro výpis, ohodnocení)
